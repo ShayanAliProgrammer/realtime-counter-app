@@ -1,0 +1,24 @@
+{
+    "name": "shayan/realtime-counter",
+    "autoload": {
+        "psr-4": {
+            "RealtimeCounter\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "ShayanAliProgrammer",
+            "email": "janishayan10@gmail.com"
+        }
+    ],
+    "scripts": {
+        "dev": "npx concurrently \"php -S 0.0.0.0:3000 ./src/index.php\" \"php ./src/websocket-server.php\""
+    },
+    "config": {
+        "process-timeout": -1
+    },
+    "require": {
+        "vlucas/phpdotenv": "^5.6",
+        "turso/libsql": "^0.2.5"
+    }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "realtime-counter",
+  "module": "index.ts",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "@types/bun": "latest",
+    "concurrently": "^9.2.0",
+    "tailwindcss": "^4.1.11"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start:tailwindcss": "tailwindcss -i ./src/css/tailwind.css -o ./src/css/app.css --minify --watch"
+  }
+}
