@@ -1,6 +1,7 @@
 <?php
 $counter_placeholder = 0;
 require_once __DIR__ .'/start-html-minification.php';
+require_once __DIR__ . '/load-env.php';
 ?>
 <!DOCTYPE html>
 <html lang="en" style="color-scheme: dark;">
@@ -75,7 +76,7 @@ require_once __DIR__ .'/start-html-minification.php';
   </div>
 
   <script>
-    const socket = new WebSocket("ws://localhost:8080");
+    const socket = new WebSocket("ws://<?=$_ENV['APP_URL']?>:8080");
     const cooldownTime = 700; // Cooldown time in milliseconds
     let isCooldown = false;
 
