@@ -40,10 +40,10 @@ function mask($text)
   return $header . $text;
 }
 
-$server = stream_socket_server("tcp://0.0.0.0:80", $errno, $errstr);
+$server = stream_socket_server("tcp://0.0.0.0:3000", $errno, $errstr);
 if (!$server) die("Failed: $errstr ($errno)\n");
 
-echo "🟢 WebSocket Server running on ws://localhost:80\n";
+echo "🟢 WebSocket Server running on ws://localhost:3000\n";
 
 $clients = [];
 $counter = new Counter(db_connection: $db_connection, cache_db_connection: $cache_db_connection);
