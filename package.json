@@ -10,6 +10,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start:tailwindcss": "tailwindcss -i ./src/css/tailwind.css -o ./public/css/app.css --minify --watch"
+    "start:tailwindcss": "tailwindcss -i ./src/css/tailwind.css -o ./public/css/app.css --minify --watch",
+    "dev": "composer dev"
   }
 }

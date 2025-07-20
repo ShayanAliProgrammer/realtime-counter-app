@@ -75,7 +75,7 @@ require_once __DIR__ .'/start-html-minification.php';
   </div>
 
   <script>
-    const socket = new WebSocket(window.location.origin);
+    const socket = new WebSocket(window.location.origin.replace('https', 'wss').replace('http', 'ws').replace(':3000', ':8080'));
     const cooldownTime = 700; // Cooldown time in milliseconds
     let isCooldown = false;
 
