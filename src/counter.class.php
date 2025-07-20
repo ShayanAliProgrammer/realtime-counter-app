@@ -25,57 +25,71 @@ class Counter
 
     private function setup(): void
     {
-        // Setup main database
-        $this->conn->executeBatch(
-            "CREATE TABLE IF NOT EXISTS counter (
+        // Step 1: Ensure cache table always exists
+        $this->cache_db_conn->executeBatch("
+            CREATE TABLE IF NOT EXISTS counter (
                 id TEXT PRIMARY KEY,
                 value INTEGER NOT NULL DEFAULT 0
-            );"
-        );
+            );
+        ");
 
-        // Setup cache database
-        $this->cache_db_conn->executeBatch(
-            "CREATE TABLE IF NOT EXISTS counter (
-                id TEXT PRIMARY KEY,
-                value INTEGER NOT NULL DEFAULT 0
-            );"
-        );
+        // Step 2: Check remote (main) DB existence
+        $remote_exists_stmt = $this->conn->prepare("
+            SELECT 1 as `status`
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM sqlite_master 
+                    WHERE type = 'table' AND name = 'counter'
+                );
+        ");
+        $remote_table_exists = !empty($remote_exists_stmt->query()->fetchArray());
 
-        $remote_db_rows = $this->conn->prepare("SELECT `value` FROM `counter` WHERE id = ?")
-            ->bind(['main'])
-            ->query()
-            ->fetchArray();
+        // Step 3: If remote table exists, fetch counter value
+        $remote_value = null;
+        if ($remote_table_exists) {
+            $remote_row = $this->conn->prepare("
+            SELECT value FROM counter WHERE id = ?
+        ")->bind(['main'])->query()->fetchArray();
 
-
-        if (empty($remote_db_rows)) {
-            // Initialize main database
-            $this->conn->prepare("INSERT INTO `counter` (`id`, `value`) VALUES (?, ?)")
-                ->bind(['main', 0])
-                ->execute();
+            if (!empty($remote_row)) {
+                $remote_value = $remote_row[0]['value'];
+            } else {
+                // Initialize remote table if empty and not deleted
+                $this->conn->prepare("
+                INSERT INTO counter (id, value) VALUES (?, ?)
+            ")->bind(['main', 0])->execute();
+                $remote_value = 0;
+            }
         }
 
-        $rows = $this->cache_db_conn->prepare("SELECT `value` FROM `counter` WHERE id = ?")
-            ->bind(['main'])
-            ->query()
-            ->fetchArray();
+        // Step 4: Handle cache DB state
+        $cache_row = $this->cache_db_conn->prepare("
+            SELECT value FROM counter WHERE id = ?
+        ")->bind(['main'])->query()->fetchArray();
 
-        if (! empty($rows)) return;
+        if (!empty($cache_row)) return; // Cache already initialized
 
-        // Initialize cache database
-        $this->cache_db_conn->prepare("INSERT INTO `counter` (`id`, `value`) VALUES (?, ?)")
-            ->bind(['main', $remote_db_rows[count($remote_db_rows) - 1]['value']])
-            ->execute();
+        // Step 5: If remote DB doesn't exist, mark deleted in cache with -1
+        $cache_value = $remote_table_exists ? $remote_value : -1;
+
+        $this->cache_db_conn->prepare("
+            INSERT INTO counter (id, value) VALUES (?, ?)
+        ")->bind(['main', $cache_value])->execute();
     }
 
     public function get(): int
     {
-        // Use cache database for instant retrieval
-        $row = $this->cache_db_conn->prepare("SELECT value FROM counter WHERE id = ?")
+        try {
+            // Use cache database for instant retrieval
+            $rows = $this->cache_db_conn->prepare("SELECT `value` FROM `counter` WHERE id = ?")
             ->bind(['main'])
             ->query()
             ->fetchArray();
 
-        return (int) ($row[0]['value'] ?? 0);
+            return (int) ($rows[0]['value'] ?? 0);
+        } catch (\Throwable $th) {
+            return -1;
+        }
     }
 
     public function increment(): int
@@ -89,7 +103,7 @@ class Counter
                 ->query()
                 ->fetchArray();
 
-            $current = (int) ($row[0]['value'] ?? 0);
+            $current = (int) ($row[0]['value'] ?? -2);
             $next = $current + 1;
 
             if ($next >= $this->limit) {
@@ -101,28 +115,7 @@ class Counter
                 $cache_tx->execute("DROP TABLE IF EXISTS counter");
                 $cache_tx->commit();
 
-                // Recreate tables and initialize
-                $this->conn->executeBatch(
-                    "CREATE TABLE IF NOT EXISTS counter (
-                        id TEXT PRIMARY KEY,
-                        value INTEGER NOT NULL DEFAULT 0
-                    );"
-                );
-                $this->conn->prepare("INSERT INTO counter (id, value) VALUES (?, ?)")
-                    ->bind(['main', 0])
-                    ->execute();
-
-                $this->cache_db_conn->executeBatch(
-                    "CREATE TABLE IF NOT EXISTS counter (
-                        id TEXT PRIMARY KEY,
-                        value INTEGER NOT NULL DEFAULT 0
-                    );"
-                );
-                $this->cache_db_conn->prepare("INSERT INTO counter (id, value) VALUES (?, ?)")
-                    ->bind(['main', 0])
-                    ->execute();
-
-                return 0;
+                return -1;
             }
 
             // Update main database
@@ -141,7 +134,7 @@ class Counter
         } catch (\Throwable $e) {
             $tx->rollback();
             $cache_tx->rollback();
-            throw $e;
+            return -1;
         }
     }
 }

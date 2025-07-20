@@ -3,7 +3,8 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/counter.class.php';
 
-function unmask($payload) {
+function unmask($payload)
+{
   $length = ord($payload[1]) & 127;
   if ($length === 126) {
     $masks = substr($payload, 4, 4);
@@ -23,7 +24,8 @@ function unmask($payload) {
   return $decoded;
 }
 
-function mask($text) {
+function mask($text)
+{
   $b1 = 0x81;
   $length = strlen($text);
 
@@ -50,8 +52,8 @@ while (true) {
   $read = $clients;
   $read[] = $server;
   $write = $except = [];
-  
-  if (stream_select($read, $write, $except, 2, 200000)) {
+
+  if (stream_select($read, $write, $except, 1, 200000)) {
     if (in_array($server, $read)) {
       $conn = stream_socket_accept($server);
       $headers = fread($conn, 1024);
@@ -68,9 +70,8 @@ while (true) {
         fwrite($conn, $upgrade);
         $clients[] = $conn;
 
-        // 🔥 Send current counter value to newly connected client
-        $value = $counter->get(); // <-- You need to implement this method if not yet
-        $msg = json_encode(['counter' => number_format($value)]);
+        $value = $counter->get();
+        $msg = json_encode(['counter' => number_format($value), 'db_exists' => $value >= 0]);
         fwrite($conn, mask($msg));
       }
 
@@ -88,7 +89,7 @@ while (true) {
       $message = unmask($data);
       if (trim($message) === 'increment') {
         $value = $counter->increment();
-        $msg = json_encode(['counter' => number_format($value)]);
+        $msg = json_encode(['counter' => number_format($value), 'db_exists' => $value >= 0]);
 
         $payload = mask($msg);
         foreach ($clients as $client) {
