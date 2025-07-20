@@ -76,7 +76,7 @@ require_once __DIR__ . '/load-env.php';
   </div>
 
   <script>
-    const socket = new WebSocket(`${window.location.origin.startsWith('https')?'ws':'ws'}://<?=$_ENV['APP_URL']?>${window.location.host == 'localhost'?':8080' : ''}`);
+    const socket = new WebSocket(window.location.origin);
     const cooldownTime = 700; // Cooldown time in milliseconds
     let isCooldown = false;
 
